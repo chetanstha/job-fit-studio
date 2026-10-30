@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Job Fit Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+/* Layout: application desk — slim header, three working tabs; Analyze is a two-pane bench (inputs left, AI read-out right). */
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --sunk:#e8ecf1; --line:#d5dbe3;
+  --fg:#16202e; --muted:#5a6676; --accent:#2f56c9; --accent-ink:#ffffff; --accent-soft:#e3e9fa;
+  --good:#1f7a4d; --good-soft:#dff2e7; --warn:#a2610b; --warn-soft:#fbeedb; --bad:#b4323a; --bad-soft:#f8e1e2;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f141b; --surface:#171e28; --sunk:#1e2733; --line:#2b3644;
+  --fg:#e6ebf2; --muted:#9aa6b6; --accent:#7f9ef5; --accent-ink:#0f141b; --accent-soft:#1f2b48;
+  --good:#5cc78f; --good-soft:#163024; --warn:#e3a54f; --warn-soft:#33260f; --bad:#ec7a80; --bad-soft:#3a1a1d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141b; --surface:#171e28; --sunk:#1e2733; --line:#2b3644;
+  --fg:#e6ebf2; --muted:#9aa6b6; --accent:#7f9ef5; --accent-ink:#0f141b; --accent-soft:#1f2b48;
+  --good:#5cc78f; --good-soft:#163024; --warn:#e3a54f; --warn-soft:#33260f; --bad:#ec7a80; --bad-soft:#3a1a1d; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;margin-bottom:18px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(26px,4vw,34px);letter-spacing:-.02em;margin:0;line-height:1.05}
+h1 span{color:var(--accent)}
+.tag{color:var(--muted);margin:4px 0 0;font-size:14px}
+nav.tabs{display:flex;gap:4px;background:var(--sunk);padding:4px;border-radius:999px}
+nav.tabs button{border:0;background:transparent;color:var(--muted);font:500 14px var(--body);padding:7px 16px;border-radius:999px;cursor:pointer}
+nav.tabs button[aria-selected="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgb(0 0 0 / .08)}
+nav.tabs .count{font-family:var(--mono);font-size:12px;margin-left:4px;color:var(--accent)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bench{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:20px;align-items:start}
+@media (max-width:860px){.bench{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;min-width:0}
+.panel + .panel{margin-top:16px}
+.label{font:600 11px var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+h2{font-family:var(--display);font-weight:700;font-size:20px;margin:0 0 4px;letter-spacing:-.01em;text-wrap:balance}
+h3{font-family:var(--display);font-weight:500;font-size:16px;margin:0 0 10px}
+.field{display:grid;gap:5px;margin-bottom:12px}
+.field label{font-size:13px;font-weight:500}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:480px){.row2{grid-template-columns:1fr}}
+input[type=text],input[type=url],input[type=date],textarea,select{width:100%;font:14px var(--body);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+textarea{resize:vertical;min-height:170px;line-height:1.5}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:500 14px var(--body);padding:9px 14px;border-radius:8px;cursor:pointer;text-decoration:none}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.small{padding:5px 10px;font-size:13px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.resume-chip{display:flex;align-items:center;gap:12px;padding:12px;border:1px dashed var(--line);border-radius:8px;background:var(--bg)}
+.resume-chip .doc{width:34px;height:42px;border-radius:4px;background:var(--accent-soft);border:1px solid var(--line);flex:none;position:relative}
+.resume-chip .doc::after{content:"";position:absolute;left:7px;right:7px;top:10px;height:14px;background:repeating-linear-gradient(var(--accent) 0 2px,transparent 2px 6px);opacity:.55}
+.resume-chip .meta{min-width:0;flex:1}
+.resume-chip strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.resume-chip small{color:var(--muted)}
+.note{font-size:13px;color:var(--muted)}
+.status-line{font-size:13px;margin-top:8px;min-height:1.2em}
+.status-line.err{color:var(--bad)}
+.example-flag{display:inline-block;font:600 11px var(--body);letter-spacing:.08em;text-transform:uppercase;background:var(--warn-soft);color:var(--warn);padding:3px 8px;border-radius:4px}
+/* Result */
+.verdict{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:center}
+.gauge{width:112px;height:112px;position:relative}
+.gauge svg{width:100%;height:100%;transform:rotate(-90deg)}
+.gauge .num{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-family:var(--display);font-weight:700;font-size:34px;line-height:1}
+.gauge .num small{display:block;font:500 11px var(--mono);color:var(--muted);margin-top:2px}
+.band{display:inline-block;font:600 12px var(--body);padding:3px 9px;border-radius:999px;margin-bottom:6px}
+.band.good{background:var(--good-soft);color:var(--good)} .band.mid{background:var(--warn-soft);color:var(--warn)} .band.low{background:var(--bad-soft);color:var(--bad)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+@media (max-width:560px){.cols{grid-template-columns:1fr}}
+ul.points{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+ul.points li{padding-left:14px;border-left:3px solid var(--line);font-size:14px}
+ul.points.good li{border-color:var(--good)} ul.points.gap li{border-color:var(--warn)}
+ul.points li span{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.kw{display:flex;flex-wrap:wrap;gap:6px}
+.kw span{font:13px var(--mono);background:var(--sunk);padding:3px 8px;border-radius:4px}
+.section{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.section-head h3{margin:0}
+.bullet{display:grid;gap:4px;margin-bottom:12px;font-size:14px}
+.bullet .was{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line)}
+.bullet .now{display:flex;gap:8px;align-items:flex-start}
+.bullet .now p{margin:0;flex:1;min-width:0}
+.letter{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:14px;font-size:14px;max-height:360px;overflow:auto}
+.qa{margin-bottom:12px;font-size:14px}
+.qa b{display:block;margin-bottom:2px}
+.empty{text-align:center;padding:40px 16px;color:var(--muted)}
+.empty h3{color:var(--fg)}
+.thinking{display:flex;align-items:center;gap:10px;color:var(--muted);padding:30px 0}
+.dots span{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:4px;animation:b 1s infinite ease-in-out}
+.dots span:nth-child(2){animation-delay:.15s}.dots span:nth-child(3){animation-delay:.3s}
+@keyframes b{0%,80%,100%{opacity:.25}40%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.dots span{animation:none;opacity:.7}}
+/* Tracker */
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--muted)}
+.stat b{font:600 18px var(--mono);color:var(--fg);margin-right:6px;font-variant-numeric:tabular-nums}
+.table-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:720px}
+th{text-align:left;font:600 11px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--line);background:var(--sunk)}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td .co{color:var(--muted);font-size:13px}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+td select{width:auto;padding:5px 8px;font-size:13px}
+.flag{font:600 11px var(--body);padding:2px 7px;border-radius:4px;background:var(--warn-soft);color:var(--warn);white-space:nowrap}
+.iconbtn{border:0;background:none;color:var(--muted);cursor:pointer;font-size:13px;padding:4px 6px;border-radius:4px}
+.iconbtn:hover{color:var(--bad);background:var(--bad-soft)}
+.confirm{display:inline-flex;gap:4px}
+.add-form{display:grid;grid-template-columns:2fr 2fr 2fr auto;gap:8px;align-items:end;margin-bottom:16px}
+@media (max-width:720px){.add-form{grid-template-columns:1fr}}
+.foot{margin-top:28px;font-size:13px;color:var(--muted);max-width:70ch}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:14px;z-index:20}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Job Fit <span>Studio</span></h1>
+      <p class="tag">Upload your resume, paste a job posting, and get an AI match score, tailored bullets and a cover letter.</p>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" id="tab-analyze" aria-selected="true" data-view="analyze">Analyze</button>
+      <button role="tab" id="tab-tracker" aria-selected="false" data-view="tracker">Tracker <span class="count" id="trackCount">0</span></button>
+      <button role="tab" id="tab-resume" aria-selected="false" data-view="resume">Resume</button>
+    </nav>
+  </header>
+
+  <!-- ANALYZE -->
+  <section id="view-analyze">
+    <div class="bench">
+      <div>
+        <div class="panel">
+          <p class="label">Your resume</p>
+          <div class="resume-chip" id="resumeChip"></div>
+        </div>
+        <div class="panel">
+          <p class="label">Job posting</p>
+          <div class="row2">
+            <div class="field"><label for="jobTitle">Job title</label><input type="text" id="jobTitle" placeholder="e.g. Data Analyst"></div>
+            <div class="field"><label for="jobCompany">Company</label><input type="text" id="jobCompany" placeholder="e.g. Acme Corp"></div>
+          </div>
+          <div class="field"><label for="jobUrl">Posting link (optional)</label><input type="url" id="jobUrl" placeholder="https://www.linkedin.com/jobs/view/…"></div>
+          <div class="field"><label for="jobDesc">Full job description</label><textarea id="jobDesc" placeholder="Copy the whole job description from LinkedIn and paste it here."></textarea></div>
+          <div class="field"><label for="tone">Cover letter tone</label>
+            <select id="tone"><option>Professional</option><option>Warm and personable</option><option>Short and direct</option></select></div>
+          <div class="actions">
+            <button class="btn primary" id="analyzeBtn">Analyze fit</button>
+            <button class="btn" id="clearJob">Clear</button>
+          </div>
+          <div class="status-line" id="analyzeStatus" role="status"></div>
+        </div>
+      </div>
+      <div class="panel" id="result" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- TRACKER -->
+  <section id="view-tracker" hidden>
+    <div class="stats" id="stats"></div>
+    <div class="panel" style="margin-bottom:16px">
+      <p class="label">Add an application</p>
+      <form class="add-form" id="addForm">
+        <div class="field" style="margin:0"><label for="addTitle">Job title</label><input type="text" id="addTitle" required></div>
+        <div class="field" style="margin:0"><label for="addCompany">Company</label><input type="text" id="addCompany" required></div>
+        <div class="field" style="margin:0"><label for="addUrl">Link</label><input type="url" id="addUrl" placeholder="https://"></div>
+        <button class="btn primary" type="submit">Add</button>
+      </form>
+    </div>
+    <div id="trackerBody"></div>
+  </section>
+
+  <!-- RESUME -->
+  <section id="view-resume" hidden>
+    <div class="panel">
+      <h2>Your resume</h2>
+      <p class="note" style="margin-top:0">Upload a PDF, Word (.docx) or text file, or paste the text. The AI reads this text, so check that it came through cleanly.</p>
+      <div class="actions" style="margin:12px 0">
+        <label class="btn primary" for="resumeFile">Upload resume file</label>
+        <input type="file" id="resumeFile" class="sr" accept=".pdf,.docx,.txt,.md">
+        <span class="note" id="fileNote"></span>
+      </div>
+      <div class="field drop" id="dropZone">
+        <label for="resumeText">Resume text</label>
+        <textarea id="resumeText" style="min-height:360px" placeholder="Paste your resume here, or drop a file onto this box."></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="saveResume">Save resume</button>
+        <span class="note" id="saveNote"></span>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot" id="foot">Job Fit Studio helps you prepare strong applications quickly. It doesn't submit applications for you: LinkedIn doesn't allow automated applying, so you review and send each one yourself. Never paste in anything the AI wrote without reading it first.</p>
+</div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const STATUSES = ["Saved","Applied","Interviewing","Offer","Rejected"];
+let resume = null;          // {text, fileName, updatedAt}
+let apps = [];              // tracker rows
+let analysis = null;        // latest AI result
+let analysisJob = null;     // job inputs used for it
+let isExample = true;
+let store = null;           // storage adapter
+let sample = null;
+let pendingDelete = null;
+
+function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
+
+/* ---------- Example shown before first real analysis ---------- */
+const EXAMPLE_JOB = {title:"Data Analyst", company:"Northwind Logistics", url:""};
+const EXAMPLE = {
+  score:72, verdict:"Solid match on SQL and dashboarding; the posting wants more stakeholder-facing and Python work than this resume shows.",
+  strengths:[
+    {point:"SQL reporting at scale", evidence:"Built weekly SQL reports covering 40+ stores."},
+    {point:"BI dashboards", evidence:"Owns three Tableau dashboards used by regional managers."},
+    {point:"Logistics domain", evidence:"Two years analyzing shipping and inventory data."}],
+  gaps:[
+    {point:"Python for analysis", suggestion:"If you've used pandas even in a side project, add it with a concrete result."},
+    {point:"Presenting to leadership", suggestion:"Name a time you walked managers through findings and what changed."}],
+  missingKeywords:["Python","A/B testing","stakeholder management","data modeling","Looker"],
+  bullets:[{original:"Made reports in SQL for stores.", improved:"Built automated weekly SQL reports for 40+ stores, cutting manual reporting time by about 6 hours a week."}],
+  summary:"Data analyst with two years of logistics experience turning shipping and inventory data into decisions. Builds SQL pipelines and Tableau dashboards that regional managers use weekly. Looking to bring that operational focus to Northwind's analytics team.",
+  coverLetter:"Dear Hiring Manager,\n\nI'm applying for the Data Analyst role at Northwind Logistics. Over the past two years I've worked with shipping and inventory data every day, building the SQL reports and Tableau dashboards that regional managers use to plan stock.\n\n(Example letter. Upload your resume and paste a real posting to generate your own.)\n\nSincerely,\n[Your Name]",
+  screening:[{question:"How many years of SQL experience do you have?", answer:"Two years of daily SQL work, including automated weekly reporting across 40+ locations."}]
+};
+
+/* ---------- Storage: private per-person db, else this browser ---------- */
+function localAdapter(){
+  const get = k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
+  const put = (k,v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+  return {
+    kind:"local",
+    start(onResume,onApps){ onResume(get("jfs.resume")); onApps(get("jfs.apps") || []); this._onApps=onApps; },
+    async saveResume(r){ put("jfs.resume", r); },
+    async saveApp(a){ const list=(get("jfs.apps")||[]).filter(x=>x.id!==a.id); list.push(a); put("jfs.apps",list); this._onApps(list); },
+    async deleteApp(id){ const list=(get("jfs.apps")||[]).filter(x=>x.id!==id); put("jfs.apps",list); this._onApps(list); }
+  };
+}
+async function dbAdapter(){
+  const db = await claude.use("db"); const user = await claude.use("user");
+  if(!db || !user) return null;
+  const uid = await user.id(); if(!uid) return null;
+  const resumeRef = db.doc(`data/users/${uid}/resume`);
+  const jobs = db.doc(`data/users/${uid}/tracker`).collection("jobs");
+  return {
+    kind:"db",
+    start(onResume,onApps){
+      resumeRef.onSnapshot(s => onResume(s.exists ? s.data() : null), e => console.warn(e));
+      jobs.onSnapshot(s => onApps(s.docs.map(d => ({...d.data(), id:d.id}))), e => console.warn(e));
+    },
+    async saveResume(r){ await resumeRef.set(r); },
+    async saveApp(a){ const {id, ...rest} = a; await jobs.doc(id).set(rest); },
+    async deleteApp(id){ await jobs.doc(id).delete(); }
+  };
+}
+
+/* ---------- Tabs ---------- */
+function show(view){
+  document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.view===view));
+  ["analyze","tracker","resume"].forEach(v => $("#view-"+v).hidden = v!==view);
+  try { localStorage.setItem("jfs.tab", view); } catch {}
+}
+document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => show(b.dataset.view)));
+
+/* ---------- Resume ---------- */
+function renderResumeChip(){
+  const c = $("#resumeChip");
+  if(resume && resume.text){
+    const words = resume.text.trim().split(/\s+/).length;
+    const when = resume.updatedAt ? new Date(resume.updatedAt).toLocaleDateString() : "";
+    c.innerHTML = `<div class="doc"></div><div class="meta"><strong>${esc(resume.fileName || "Pasted resume")}</strong><small>${words.toLocaleString()} words · saved ${esc(when)}</small></div><button class="btn small" id="editResume">Change</button>`;
+  } else {
+    c.innerHTML = `<div class="doc"></div><div class="meta"><strong>No resume yet</strong><small>Add it once and every analysis uses it.</small></div><button class="btn small primary" id="editResume">Add resume</button>`;
+  }
+  $("#editResume").onclick = () => show("resume");
+  if(resume && document.activeElement !== $("#resumeText") && !$("#resumeText").value) $("#resumeText").value = resume.text || "";
+}
+
+async function extractText(file){
+  const name = file.name.toLowerCase();
+  if(name.endsWith(".pdf")){
+    const lib = window.pdfjsLib; if(!lib) throw new Error("The PDF reader didn't load. Paste your resume text instead.");
+    const pdf = await lib.getDocument({data: await file.arrayBuffer()}).promise;
+    let out = [];
+    for(let i=1;i<=pdf.numPages;i++){
+      const page = await pdf.getPage(i); const tc = await page.getTextContent();
+      let line="", lastY=null, lines=[];
+      for(const it of tc.items){ const y = it.transform[5]; if(lastY!==null && Math.abs(y-lastY)>2){ lines.push(line); line=""; } line += it.str; lastY=y; }
+      lines.push(line); out.push(lines.join("\n"));
+    }
+    return out.join("\n\n").replace(/\n{3,}/g,"\n\n").trim();
+  }
+  if(name.endsWith(".docx")){
+    if(!window.mammoth) throw new Error("The Word reader didn't load. Paste your resume text instead.");
+    const r = await mammoth.extractRawText({arrayBuffer: await file.arrayBuffer()});
+    return r.value.replace(/\n{3,}/g,"\n\n").trim();
+  }
+  if(name.endsWith(".txt") || name.endsWith(".md")) return (await file.text()).trim();
+  throw new Error("Use a PDF, .docx or .txt file.");
+}
+let pendingFileName = null;
+async function handleFile(file){
+  if(!file) return;
+  $("#fileNote").textContent = "Reading " + file.name + "…";
+  try{
+    const text = await extractText(file);
+    if(!text || text.length < 80) throw new Error("Couldn't find much text in that file. If it's a scanned image, paste the text instead.");
+    $("#resumeText").value = text; pendingFileName = file.name;
+    $("#fileNote").textContent = `Read ${file.name}. Check the text below, then save.`;
+  }catch(e){ $("#fileNote").textContent = e.message; }
+}
+$("#resumeFile").addEventListener("change", e => handleFile(e.target.files[0]));
+const dz = $("#dropZone");
+dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("over"); });
+dz.addEventListener("dragleave", () => dz.classList.remove("over"));
+dz.addEventListener("drop", e => { e.preventDefault(); dz.classList.remove("over"); handleFile(e.dataTransfer.files[0]); });
+$("#saveResume").addEventListener("click", async () => {
+  const text = $("#resumeText").value.trim();
+  if(text.length < 80){ $("#saveNote").textContent = "That looks too short to be a resume. Paste the full text."; return; }
+  resume = {text: text.slice(0, 30000), fileName: pendingFileName || resume?.fileName || "Pasted resume", updatedAt: Date.now()};
+  renderResumeChip();
+  try{ await store.saveResume(resume); $("#saveNote").textContent = store.kind==="db" ? "Saved to your account." : "Saved in this browser."; toast("Resume saved"); }
+  catch(e){ $("#saveNote").textContent = "Couldn't save: " + (e.message||e.code); }
+});
+
+/* ---------- Analysis ---------- */
+function band(score){ return score>=75 ? ["good","Strong match"] : score>=55 ? ["mid","Partial match"] : ["low","Weak match"]; }
+function gauge(score){
+  const r=46, c=2*Math.PI*r, off=c*(1-score/100), [b]=band(score);
+  const col = b==="good"?"var(--good)":b==="mid"?"var(--warn)":"var(--bad)";
+  return `<div class="gauge"><svg viewBox="0 0 112 112" aria-hidden="true"><circle cx="56" cy="56" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="10"/><circle cx="56" cy="56" r="${r}" fill="none" stroke="${col}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/></svg><div class="num"><div>${score}<small>/ 100</small></div></div></div>`;
+}
+function copyBtn(id){ return `<button class="btn small" data-copy="${id}">Copy</button>`; }
+let copyStore = {};
+function renderResult(){
+  const a = analysis || EXAMPLE, job = analysisJob || EXAMPLE_JOB;
+  copyStore = {};
+  const [bcls, blabel] = band(a.score);
+  copyStore.summary = a.summary; copyStore.letter = a.coverLetter;
+  (a.bullets||[]).forEach((b,i)=> copyStore["b"+i] = b.improved);
+  (a.screening||[]).forEach((q,i)=> copyStore["q"+i] = q.answer);
+  const already = apps.find(x => analysis && x.title===job.title && x.company===job.company);
+  $("#result").innerHTML = `
+    ${isExample ? `<p style="margin:0 0 12px"><span class="example-flag">Example</span> <span class="note">This is a sample result. Add your resume and a real posting to see yours.</span></p>` : ""}
+    <div class="verdict">${gauge(a.score)}<div style="min-width:0">
+      <span class="band ${bcls}">${blabel}</span>
+      <h2>${esc(job.title || "This role")}${job.company ? ` <span style="color:var(--muted);font-weight:500">at ${esc(job.company)}</span>` : ""}</h2>
+      <p style="margin:4px 0 10px">${esc(a.verdict)}</p>
+      ${isExample ? "" : `<div class="actions"><button class="btn small primary" id="saveToTracker" ${already?"disabled":""}>${already?"In your tracker":"Save to tracker"}</button>${job.url?`<a class="btn small" href="${esc(job.url)}" target="_blank" rel="noopener">Open posting ↗</a>`:""}</div>`}
+    </div></div>
+    <div class="cols">
+      <div><h3>Where you match</h3><ul class="points good">${(a.strengths||[]).map(s=>`<li>${esc(s.point)}<span>${esc(s.evidence)}</span></li>`).join("")}</ul></div>
+      <div><h3>Gaps to address</h3><ul class="points gap">${(a.gaps||[]).map(s=>`<li>${esc(s.point)}<span>${esc(s.suggestion)}</span></li>`).join("")}</ul></div>
+    </div>
+    ${(a.missingKeywords||[]).length ? `<div class="section"><h3>Keywords from the posting missing in your resume</h3><div class="kw">${a.missingKeywords.map(k=>`<span>${esc(k)}</span>`).join("")}</div><p class="note" style="margin-bottom:0">Add these only where they're true. Applicant tracking systems scan for them.</p></div>` : ""}
+    <div class="section"><div class="section-head"><h3>Tailored summary</h3>${copyBtn("summary")}</div><p style="margin:0">${esc(a.summary)}</p></div>
+    ${(a.bullets||[]).length ? `<div class="section"><h3>Stronger resume bullets</h3>${a.bullets.map((b,i)=>`<div class="bullet"><div class="was">${esc(b.original)}</div><div class="now"><p>${esc(b.improved)}</p>${copyBtn("b"+i)}</div></div>`).join("")}</div>` : ""}
+    <div class="section"><div class="section-head"><h3>Cover letter</h3>${copyBtn("letter")}</div><div class="letter">${esc(a.coverLetter)}</div></div>
+    ${(a.screening||[]).length ? `<div class="section"><h3>Likely screening questions</h3>${a.screening.map((q,i)=>`<div class="qa"><div class="section-head" style="margin-bottom:2px"><b>${esc(q.question)}</b>${copyBtn("q"+i)}</div>${esc(q.answer)}</div>`).join("")}</div>` : ""}
+  `;
+  const st = $("#saveToTracker"); if(st) st.onclick = () => addFromAnalysis();
+}
+$("#result").addEventListener("click", async e => {
+  const b = e.target.closest("[data-copy]"); if(!b) return;
+  const text = copyStore[b.dataset.copy] || "";
+  try{ await navigator.clipboard.writeText(text); b.textContent="Copied"; setTimeout(()=>b.textContent="Copy",1500); }
+  catch{ const sec = b.closest(".section, .qa, .bullet"); const sel = window.getSelection(); const r=document.createRange(); const tgt = sec.querySelector(".letter, p, .now p") || sec; r.selectNodeContents(tgt); sel.removeAllRanges(); sel.addRange(r); toast("Text selected. Press Ctrl+C or ⌘C to copy."); }
+});
+
+function thinking(msg){ $("#result").innerHTML = `<div class="thinking"><span class="dots"><span></span><span></span><span></span></span>${esc(msg)}</div>`; }
+
+$("#analyzeBtn").addEventListener("click", async () => {
+  const s = $("#analyzeStatus"); s.className="status-line";
+  const job = {title:$("#jobTitle").value.trim(), company:$("#jobCompany").value.trim(), url:$("#jobUrl").value.trim(), desc:$("#jobDesc").value.trim()};
+  if(!resume || !resume.text){ s.textContent="Add your resume first, on the Resume tab."; s.classList.add("err"); return; }
+  if(job.desc.length < 120){ s.textContent="Paste the full job description. It needs more detail to compare against."; s.classList.add("err"); return; }
+  if(!sample){ s.textContent="AI isn't available in this view. Open the page in Claude while signed in."; s.classList.add("err"); return; }
+  const btn = $("#analyzeBtn"); btn.disabled = true; btn.textContent = "Analyzing…";
+  thinking("Comparing your resume to the posting…");
+  const prompt = `You are an experienced recruiter and resume coach. Compare the candidate's RESUME with the JOB POSTING and return ONLY a JSON object, no prose, with exactly this shape:
+{
+ "jobTitle": string (from the posting if not given),
+ "company": string (from the posting if not given, else ""),
+ "score": integer 0-100, an honest fit score (75+ strong, 55-74 partial, below 55 weak),
+ "verdict": one plain sentence explaining the score,
+ "strengths": up to 5 items {"point": short requirement they meet, "evidence": the resume fact that shows it},
+ "gaps": up to 5 items {"point": requirement not shown, "suggestion": concrete, honest way to address it},
+ "missingKeywords": up to 10 important skills/terms from the posting absent from the resume,
+ "bullets": up to 4 items {"original": an existing resume bullet copied verbatim, "improved": a rewrite aimed at this job, using only facts in the resume},
+ "summary": a 2-3 sentence professional summary tailored to this job,
+ "coverLetter": a ${$("#tone").value.toLowerCase()} cover letter of 220-320 words, plain text, paragraphs separated by \\n\\n, opening "Dear Hiring Manager," and ending with the candidate's real name from the resume,
+ "screening": 3 items {"question": a likely screening question for this job, "answer": a short first-person answer grounded in the resume}
+}
+Rules: Never invent employers, titles, degrees, numbers or skills that are not in the resume. If a number would help but isn't in the resume, don't make one up. Write in plain, natural English.
+
+JOB TITLE: ${job.title || "(not given)"}
+COMPANY: ${job.company || "(not given)"}
+JOB POSTING:
+"""${job.desc.slice(0, 15000)}"""
+
+RESUME:
+"""${resume.text.slice(0, 20000)}"""`;
+  try{
+    const out = await sample.json(prompt, {modelTier:"default"});
+    if(!out || typeof out.score !== "number") throw {message:"The AI returned an unexpected answer. Try again."};
+    out.score = Math.max(0, Math.min(100, Math.round(out.score)));
+    analysis = out; isExample = false;
+    analysisJob = {title: job.title || out.jobTitle || "", company: job.company || out.company || "", url: job.url};
+    renderResult(); s.textContent = "";
+  }catch(e){
+    renderResult();
+    s.classList.add("err");
+    s.textContent = e && e.code==="not_granted" ? "AI access wasn't allowed. Allow it from the page's permissions to analyze jobs."
+      : e && e.code==="rate_limited" ? "Too many requests right now. Wait a minute and try again."
+      : "Analysis failed: " + (e && e.message || "unknown error");
+  }finally{ btn.disabled=false; btn.textContent="Analyze fit"; }
+});
+$("#clearJob").addEventListener("click", () => { ["#jobTitle","#jobCompany","#jobUrl","#jobDesc"].forEach(s=>$(s).value=""); $("#analyzeStatus").textContent=""; });
+
+/* ---------- Tracker ---------- */
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const today = () => new Date().toISOString().slice(0,10);
+async function saveApp(a){ try{ await store.saveApp(a); }catch(e){ toast("Couldn't save: " + (e.message||e.code)); } }
+async function addFromAnalysis(){
+  const j = analysisJob;
+  await saveApp({id:uid(), title:j.title||"Untitled role", company:j.company||"", url:j.url||"", status:"Saved", score:analysis.score, appliedOn:"", createdAt:Date.now(), coverLetter:analysis.coverLetter||""});
+  toast("Saved to tracker"); renderResult();
+}
+$("#addForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  await saveApp({id:uid(), title:$("#addTitle").value.trim(), company:$("#addCompany").value.trim(), url:$("#addUrl").value.trim(), status:"Applied", score:null, appliedOn:today(), createdAt:Date.now()});
+  e.target.reset(); toast("Added");
+});
+function daysSince(d){ if(!d) return null; return Math.floor((Date.now() - new Date(d+"T00:00:00").getTime())/86400000); }
+function renderTracker(){
+  $("#trackCount").textContent = apps.length;
+  const counts = Object.fromEntries(STATUSES.map(s=>[s, apps.filter(a=>a.status===s).length]));
+  $("#stats").innerHTML = STATUSES.map(s=>`<div class="stat"><b>${counts[s]}</b>${s}</div>`).join("");
+  if(!apps.length){
+    $("#trackerBody").innerHTML = `<div class="panel empty"><h3>No applications yet</h3><p>Analyze a posting and choose <b>Save to tracker</b>, or add one with the form above.</p></div>`;
+    return;
+  }
+  const rows = [...apps].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).map(a => {
+    const d = daysSince(a.appliedOn);
+    const follow = a.status==="Applied" && d!==null && d>=7;
+    return `<tr data-id="${esc(a.id)}">
+      <td><b>${a.url?`<a href="${esc(a.url)}" target="_blank" rel="noopener" style="color:inherit">${esc(a.title)}</a>`:esc(a.title)}</b><div class="co">${esc(a.company)}</div></td>
+      <td><select data-f="status" aria-label="Status">${STATUSES.map(s=>`<option ${s===a.status?"selected":""}>${s}</option>`).join("")}</select></td>
+      <td class="num">${a.score==null?"—":a.score}</td>
+      <td><input type="date" data-f="appliedOn" value="${esc(a.appliedOn||"")}" aria-label="Date applied" style="width:auto;padding:5px 8px;font-size:13px"></td>
+      <td>${follow?`<span class="flag">Follow up · ${d}d</span>`:d!==null&&a.status==="Applied"?`<span class="note">${d}d ago</span>`:""}</td>
+      <td style="text-align:right">${pendingDelete===a.id?`<span class="confirm"><button class="btn small" data-act="del-yes">Delete</button><button class="btn small" data-act="del-no">Keep</button></span>`:`<button class="iconbtn" data-act="del">Remove</button>`}</td>
+    </tr>`;
+  }).join("");
+  $("#trackerBody").innerHTML = `<div class="table-wrap"><table><thead><tr><th>Role</th><th>Status</th><th>Fit</th><th>Applied</th><th>Next step</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+$("#trackerBody").addEventListener("change", e => {
+  const tr = e.target.closest("tr"); if(!tr) return;
+  const a = apps.find(x=>x.id===tr.dataset.id); if(!a) return;
+  const f = e.target.dataset.f; const upd = {...a, [f]: e.target.value};
+  if(f==="status" && e.target.value==="Applied" && !a.appliedOn) upd.appliedOn = today();
+  saveApp(upd);
+});
+$("#trackerBody").addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]"); if(!b) return;
+  const id = b.closest("tr").dataset.id;
+  if(b.dataset.act==="del"){ pendingDelete=id; renderTracker(); }
+  else if(b.dataset.act==="del-no"){ pendingDelete=null; renderTracker(); }
+  else { pendingDelete=null; try{ await store.deleteApp(id); toast("Removed"); }catch(err){ toast("Couldn't remove"); } }
+});
+
+/* ---------- Boot ---------- */
+function boot(adapter){
+  store = adapter;
+  store.start(r => { resume = r; renderResumeChip(); }, list => { apps = list || []; renderTracker(); if(!isExample) renderResult(); });
+  if(store.kind==="local") $("#foot").textContent += " Your resume and tracker are saved in this browser only.";
+}
+renderResumeChip(); renderResult(); renderTracker();
+try{ const t = localStorage.getItem("jfs.tab"); if(t) show(t); }catch{}
+let booted = false;
+const fallback = setTimeout(() => { if(!booted){ booted=true; boot(localAdapter()); } }, 6000);
+(async () => {
+  if(!window.claude?.use){ clearTimeout(fallback); booted=true; boot(localAdapter()); return; }
+  claude.use("sample").then(s => { sample = s; });
+  try{
+    const ad = await dbAdapter();
+    if(booted) return; booted=true; clearTimeout(fallback); boot(ad || localAdapter());
+  }catch{ if(!booted){ booted=true; clearTimeout(fallback); boot(localAdapter()); } }
+})();
+})();
+</script>
+
+</body>
+</html>
